@@ -1,0 +1,24 @@
+{
+  "name": "backend-yt",
+  "version": "1.0.0",
+  "description": "A node js backend project for learning",
+  "keywords": [
+    "\"javascript\"",
+    "\"nodejs\""
+  ],
+  "homepage": "https://github.com/harshilvaliya/backend-yt#readme",
+  "bugs": {
+    "url": "https://github.com/harshilvaliya/backend-yt/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/harshilvaliya/backend-yt.git"
+  },
+  "license": "ISC",
+  "author": "Harshil Valiya",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  }
+}
