@@ -140,7 +140,7 @@ Create a `.env` file in the root directory:
 
 ```env
 PORT=8000
-MONGODB_URI=mongodb://localhost:27017
+MONGODB_URI=your_mongodb_uri
 ```
 
 ### 🚀 How to Run the Project
