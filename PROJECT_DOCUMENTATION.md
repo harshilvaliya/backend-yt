@@ -198,8 +198,6 @@ CORS_ORIGIN=http://localhost:3000
 4. **Access the server:**
    - Server will run on `http://localhost:8000`
 
-## Technology Stack
-
 ## Utility Classes Documentation
 
 ### ApiError Class
@@ -365,6 +363,8 @@ const asyncHandler = (requestHandler) => async (req, res, next) => {
 4. **Error Middleware Integration:**
    - Ensure Express error handling middleware is configured
    - The `asyncHandler` passes errors to `next()` for centralized handling
+
+## Technology Stack
 
 - **Runtime**: Node.js
 - **Framework**: Express.js
