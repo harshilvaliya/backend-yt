@@ -44,6 +44,27 @@ npm install cors cookie-parser
 - **cors**: Cross-Origin Resource Sharing middleware
 - **cookie-parser**: Cookie parsing middleware
 
+### Step 2.2: Authentication and Security Dependencies
+
+```bash
+npm install bcrypt jsonwebtoken
+```
+
+**Authentication Dependencies Added:**
+
+- **bcrypt**: Password hashing library
+- **jsonwebtoken**: JWT token generation and verification
+
+### Step 2.3: Database Enhancement Dependencies
+
+```bash
+npm install mongoose-aggregate-paginate-v2
+```
+
+**Database Enhancement Dependencies Added:**
+
+- **mongoose-aggregate-paginate-v2**: Pagination support for MongoDB aggregations
+
 ### Step 3: Project Structure Setup
 
 Created the following directory structure:
@@ -131,6 +152,175 @@ app.use(cookieParser());
 - Auto-restart on file changes
 - Environment variables loaded automatically
 
+### Step 8: User Model Implementation
+
+**File: `src/models/user.model.js`**
+
+```javascript
+import mongoose, { Schema } from "mongoose";
+import jwt from "jsonwebtoken";
+import bcrypt from "bcrypt";
+
+const userSchema = new Schema(
+  {
+    username: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+      index: true,
+    },
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+    },
+    fullName: {
+      type: String,
+      required: true,
+      trim: true,
+      index: true,
+    },
+    avatar: {
+      type: String, // cloudinary url
+      required: true,
+    },
+    coverImage: {
+      type: String, // cloudinary url
+    },
+    watchHistroy: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: "Video",
+      },
+    ],
+    password: {
+      type: String,
+      required: [true, "Password is required"],
+    },
+    refreshToken: {
+      type: String,
+    },
+  },
+  { timestamps: true },
+);
+```
+
+**Key Features:**
+
+- **Password Hashing**: Automatic bcrypt hashing on save
+- **JWT Token Generation**: Methods for access and refresh tokens
+- **Password Verification**: Method to compare passwords
+- **User Fields**: Username, email, fullName, avatar, coverImage, watchHistory
+- **Indexing**: Optimized queries on username, fullName, and email
+- **Timestamps**: Automatic createdAt and updatedAt fields
+
+**Schema Methods:**
+
+```javascript
+// Password hashing middleware
+userSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
+  this.password = await bcrypt.hash(this.password, 10);
+  next();
+});
+
+// Password verification method
+userSchema.methods.isPasswordCorrect = async function (password) {
+  return await bcrypt.compare(password, this.password);
+};
+
+// Access token generation
+userSchema.methods.generateAccessToken = function () {
+  return jwt.sign(
+    {
+      _id: this._id,
+      email: this.email,
+      username: this.username,
+      fullName: this.fullName,
+    },
+    process.env.ACCESS_TOKEN_SECRET,
+    {
+      expiresIn: process.env.ACCESS_TOKEN_EXPIRY,
+    },
+  );
+};
+
+// Refresh token generation
+userSchema.methods.generateRefreshToken = function () {
+  return jwt.sign(
+    {
+      _id: this._id,
+    },
+    process.env.REFRESH_TOKEN_SECRET,
+    {
+      expiresIn: process.env.REFRESH_TOKEN_EXPIRY,
+    },
+  );
+};
+```
+
+### Step 9: Video Model Implementation
+
+**File: `src/models/video.model.js`**
+
+```javascript
+import mongoose, { Schema } from "mongoose";
+import mongooseAggregatePaginate from "mongoose-aggregate-paginate-v2";
+
+const videoSchema = new Schema(
+  {
+    videoFile: {
+      type: String,
+      required: true,
+    },
+    thumbnail: {
+      type: String,
+      required: true,
+    },
+    title: {
+      type: String,
+      required: true,
+    },
+    description: {
+      type: String,
+      required: true,
+    },
+    duration: {
+      type: Number, // from cloudinary
+      required: true,
+    },
+    views: {
+      type: Number,
+      default: 0,
+    },
+    isPublished: {
+      type: Boolean,
+      default: true,
+    },
+    owner: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+    },
+  },
+  { timestamps: true },
+);
+
+videoSchema.plugin(mongooseAggregatePaginate);
+```
+
+**Key Features:**
+
+- **Video Metadata**: File URL, thumbnail, title, description, duration
+- **View Tracking**: Automatic view count with default 0
+- **Publishing Control**: isPublished flag for draft/published videos
+- **Owner Reference**: Links to User model for video ownership
+- **Pagination Support**: mongoose-aggregate-paginate-v2 plugin
+- **Timestamps**: Automatic createdAt and updatedAt fields
+
 ## Current Project State
 
 ### ✅ Completed Features
@@ -144,6 +334,10 @@ app.use(cookieParser());
 7. **Cookie Parser**: Cookie parsing middleware configured
 8. **Body Parsing**: JSON and URL-encoded body parsing with limits
 9. **Static File Serving**: Public directory configured for static files
+10. **User Authentication**: JWT and bcrypt integration for secure user management
+11. **User Model**: Complete user schema with password hashing and token generation
+12. **Video Model**: Video schema with pagination support and user relationships
+13. **Security Features**: Password hashing, JWT token generation, and refresh tokens
 
 ### 📁 Directory Structure
 
@@ -176,6 +370,12 @@ Create a `.env` file in the root directory:
 PORT=8000
 MONGODB_URI=your_mongodb_uri
 CORS_ORIGIN=http://localhost:3000
+
+# JWT Configuration
+ACCESS_TOKEN_SECRET=your_access_token_secret_key
+ACCESS_TOKEN_EXPIRY=1d
+REFRESH_TOKEN_SECRET=your_refresh_token_secret_key
+REFRESH_TOKEN_EXPIRY=10d
 ```
 
 ### 🚀 How to Run the Project
@@ -197,6 +397,64 @@ CORS_ORIGIN=http://localhost:3000
 
 4. **Access the server:**
    - Server will run on `http://localhost:8000`
+
+## Authentication and Security Features
+
+### JWT Token System
+
+The project implements a dual-token authentication system:
+
+**Access Token:**
+- Short-lived (1 day by default)
+- Contains user identity information (id, email, username, fullName)
+- Used for API authentication
+- Stored in memory or secure HTTP-only cookies
+
+**Refresh Token:**
+- Long-lived (10 days by default)
+- Contains only user ID for security
+- Used to generate new access tokens
+- Stored in HTTP-only cookies
+
+### Password Security
+
+**bcrypt Integration:**
+- Automatic password hashing on user creation/update
+- 10 rounds of hashing for optimal security-performance balance
+- Secure password comparison method
+- Prevents rainbow table attacks
+
+**Password Validation:**
+- Required field validation
+- Automatic hashing before database storage
+- Secure comparison for login verification
+
+### User Model Security Features
+
+**Schema-Level Security:**
+- Unique constraints on username and email
+- Indexed fields for optimized queries
+- Lowercase transformation for consistency
+- Trim whitespace for data integrity
+
+**Authentication Methods:**
+- `isPasswordCorrect()`: Secure password verification
+- `generateAccessToken()`: JWT access token generation
+- `generateRefreshToken()`: JWT refresh token generation
+
+### Video Model Features
+
+**Content Management:**
+- Video file and thumbnail URL storage
+- Title and description metadata
+- Duration tracking from cloudinary
+- View count with automatic increment capability
+- Publishing status control (draft/published)
+
+**User Relationships:**
+- Owner reference to User model
+- Watch history tracking in User model
+- Pagination support for video listings
 
 ## Utility Classes Documentation
 
@@ -364,6 +622,51 @@ const asyncHandler = (requestHandler) => async (req, res, next) => {
    - Ensure Express error handling middleware is configured
    - The `asyncHandler` passes errors to `next()` for centralized handling
 
+## Security Best Practices
+
+### Environment Variables
+
+**Required Environment Variables:**
+- `ACCESS_TOKEN_SECRET`: Strong secret key for access tokens
+- `REFRESH_TOKEN_SECRET`: Strong secret key for refresh tokens
+- `ACCESS_TOKEN_EXPIRY`: Access token expiration time (e.g., "1d")
+- `REFRESH_TOKEN_EXPIRY`: Refresh token expiration time (e.g., "10d")
+
+**Security Recommendations:**
+- Use strong, randomly generated secrets (32+ characters)
+- Store secrets in environment variables, never in code
+- Use different secrets for access and refresh tokens
+- Regularly rotate secrets in production
+- Use HTTPS in production environments
+
+### JWT Token Security
+
+**Token Storage:**
+- Store access tokens in memory or secure HTTP-only cookies
+- Store refresh tokens in HTTP-only, secure cookies
+- Never store tokens in localStorage (vulnerable to XSS)
+- Implement token rotation for enhanced security
+
+**Token Validation:**
+- Always verify token signatures
+- Check token expiration on each request
+- Implement token blacklisting for logout
+- Use short-lived access tokens with refresh mechanism
+
+### Password Security
+
+**Hashing Best Practices:**
+- Use bcrypt with 10+ rounds for production
+- Never store plain text passwords
+- Implement password strength requirements
+- Use secure password reset mechanisms
+
+**Authentication Flow:**
+- Implement rate limiting for login attempts
+- Use secure session management
+- Log authentication events for monitoring
+- Implement account lockout for failed attempts
+
 ## Technology Stack
 
 - **Runtime**: Node.js
@@ -374,6 +677,8 @@ const asyncHandler = (requestHandler) => async (req, res, next) => {
 - **Code Formatting**: Prettier
 - **CORS**: Cross-origin resource sharing
 - **Cookie Parser**: Cookie parsing middleware
+- **Authentication**: JWT (JSON Web Tokens) with bcrypt password hashing
+- **Database Enhancement**: mongoose-aggregate-paginate-v2 for pagination
 
 ## Project Metadata
 
